@@ -57,15 +57,15 @@ jobs:
         run: |
           cd ndlkotenocr-lite-gui
           cp -r ../src .
-          flet build ${{ matrix.target-platform }} --output ${{ matrix.target-platform }} --build-version ${{github.ref_name}} --project "NDLkotenOCR-Lite" --product "NDLkotenOCR-Lite" --org "National Diet Library" --company "National Diet Library" --copyright "Copyright (c) 2024 National Diet Library"
+          flet build ${{ matrix.target-platform }} --output ../${{ matrix.target-platform }} --build-version ${{github.ref_name}} --project "NDLkotenOCR-Lite" --product "NDLkotenOCR-Lite" --org "National Diet Library" --company "National Diet Library" --copyright "Copyright (c) 2024 National Diet Library"
       - name: "Flet build(Windows)"
         if: runner.os == 'Windows'
         shell: cmd
         run: |
           cd ndlkotenocr-lite-gui
-          xcopy ..\src .\src
+          echo D | xcopy ..\src .\src /E
           set PYTHONUTF8=1
-          flet build ${{ matrix.target-platform }} --output ${{ matrix.target-platform }} --build-version ${{github.ref_name}} --project "NDLkotenOCR-Lite" --product "NDLkotenOCR-Lite" --org "National Diet Library" --company "National Diet Library" --copyright "Copyright (c) 2024 National Diet Library"
+          flet build ${{ matrix.target-platform }} --output ..\${{ matrix.target-platform }} --build-version ${{github.ref_name}} --project "NDLkotenOCR-Lite" --product "NDLkotenOCR-Lite" --org "National Diet Library" --company "National Diet Library" --copyright "Copyright (c) 2024 National Diet Library"
       - name: "Linux/MacOS compress"
         if: runner.os != 'Windows'
         run: tar zcvf ${{matrix.binary-name}} ${{ matrix.target-platform }}
