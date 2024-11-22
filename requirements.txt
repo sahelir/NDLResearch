@@ -1,0 +1,12 @@
+dill==0.3.8
+flet==0.24.1
+lxml==5.2.2
+networkx==3.3
+numpy==1.26.4
+onnxruntime==1.18.0
+pillow==11.0.0
+ordered-set==4.1.0
+protobuf==3.20.3
+pyparsing==3.1.2
+PyYAML==6.0.1
+tqdm==4.66.4

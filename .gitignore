@@ -1,0 +1,5 @@
+**/__pycache__/**
+/ocrenv/
+/ndlkotenocr-lite-gui/build/
+/ndlkotenocr-lite-gui/src/
+/example/
