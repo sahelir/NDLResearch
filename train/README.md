@@ -20,7 +20,7 @@ Chengqi Lyu, Wenwei Zhang, Haian Huang, Yue Zhou, Yudong Wang, Yanyi Liu, Shilon
 他のサイズのモデル等については次のURLを参照してください。
 https://github.com/open-mmlab/mmdetection/tree/main/configs/rtmdet
 
-この項で紹介する当館が作成したサンプルコードはrtmcodeディレクトリ以下にあります。
+この項で紹介する当館が作成したサンプルコードは[rtmcode](./rtmcode)ディレクトリ以下にあります。
 
 ### 環境構築
 ```
@@ -34,7 +34,7 @@ pip install mmdet==3.0.0
 ```
 
 ### 学習データの変換
-次の手順は国立国会図書館が公開している[NDL-DocLデータセット](https://github.com/ndl-lab/layout-dataset)を学習用データセットのアノテーション情報に変換する手順を示しています。データを追加する場合にはrtmcococonverter.pyを適宜編集して利用してください。
+次の手順は国立国会図書館が公開している[NDL-DocLデータセット](https://github.com/ndl-lab/layout-dataset)を学習用データセットのアノテーション情報に変換する手順を示しています。データを追加する場合には[rtmcococonverter.py](./rtmcode/rtmcococonverter.py)を適宜編集して利用してください。
 
 ```
 pip install pandas tqdm
@@ -44,7 +44,7 @@ python3 rtmcococonverter.py
 ```
 
 ### 学習
-事前にrtmdettrain.pyを読んで、データセットのパス等を修正してください。
+事前に[rtmdettrain.py](./rtmcode/rtmdettrain.py)を読んで、データセットのパス等を修正してください。
 ```
 python3 rtmdettrain.py
 ```
