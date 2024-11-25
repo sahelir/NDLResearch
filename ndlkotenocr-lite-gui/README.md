@@ -32,7 +32,7 @@ python3 -m venv ocrenv
 .\ocrenv\Scripts\activate
 pip install flet==0.24.1
 xcopy ..\src .\src
-flet build windows  --template flet-build-template
+flet build windows
 ```
 
 ### Macの場合
@@ -43,7 +43,7 @@ python3 -m venv ocrenv
 source ./ocrenv/bin/activate
 pip install flet==0.24.1
 cp -r ../src .
-flet build macos  --template flet-build-template
+flet build macos
 ```
 
 ### Linuxの場合
@@ -53,5 +53,5 @@ python3 -m venv ocrenv
 source ./ocrenv/bin/activate
 pip install flet==0.24.1
 cp -r ../src .
-flet build linux --template flet-build-template
+flet build linux
 ```
