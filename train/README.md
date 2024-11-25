@@ -51,6 +51,9 @@ python3 rtmdettrain.py
 
 ### 学習済モデルのONNXへの変換
 
+https://zenn.dev/inaturam/articles/c199357d7332bc
+を参考にしています。
+
 ```
 pip install numpy==1.21.6 onnx==1.16.2 onnxruntime-gpu==1.18.1  mmdeploy==1.3.1
 git clone https://github.com/open-mmlab/mmdeploy -b v1.3.1
