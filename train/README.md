@@ -49,7 +49,7 @@ python3 rtmcococonverter.py
 python3 rtmdettrain.py
 ```
 
-### 学習済モデルONNXへの変換
+### 学習済モデルのONNXへの変換
 
 ```
 pip install numpy==1.21.6 onnx==1.16.2 onnxruntime-gpu==1.18.1  mmdeploy==1.3.1
@@ -75,4 +75,69 @@ Darwin Bautista, Rowel Atienza. Scene text recognition with permuted autoregress
 この項で紹介する当館が作成したサンプルコードはparseqcodeディレクトリ以下にあります。
 
 ### 環境構築
+```
+python3 -m venv parseqenv
+source ./parseqenv/bin/activate
+git clone https://github.com/baudm/parseq
+cp -r parseqcode/* ./parseq
+cd parseq
+python3 -m pip install --upgrade pip
+platform=cu118
+make torch-${platform}
+pip install -r requirements/core.${platform}.txt -e .[train,test]
+```
 
+そのままではONNX変換時にエラーが発生することがあるので、parseq/strhub/models/parseq/model.py
+の117行目(元リポジトリの次の箇所
+https://github.com/baudm/parseq/blob/1902db043c029a7e03a3818c616c06600af574be/strhub/models/parseq/model.py#L117)
+
+```tgt_mask = query_mask = torch.triu(torch.ones((num_steps, num_steps), dtype=torch.bool, device=self._device), 1)```
+
+を
+
+```tgt_mask = query_mask = torch.triu(torch.ones((num_steps, num_steps), dtype=torch.float, device=self._device), 1)```
+に変更してください。
+
+### 学習データの変換
+
+[OCR学習用データセット（みんなで翻刻）](https://github.com/ndl-lab/ndl-minhon-ocrdataset)の「利用方法」を参考に画像とテキストデータを対応付けた1行データセットを作成してください。
+
+honkoku_rawdataディレクトリ内に行ごとの切り出し画像とテキストデータが次のように配置されているとします。
+```
+001E3C19A3E626EC382F86D201FEFB8C-001_0.jpg
+001E3C19A3E626EC382F86D201FEFB8C-001_0.txt
+001E3C19A3E626EC382F86D201FEFB8C-003_0.jpg
+001E3C19A3E626EC382F86D201FEFB8C-003_0.txt
+……
+```
+
+convertkotensekidata2lmdb.pyを実行するとtraindataとvaliddataディレクトリにparseqの学習に利用するlmdb形式のデータセット(data.mdb、lock.mdb)が出力されます。
+
+```
+python3 convertkotensekidata2lmdb.py
+```
+
+出力されたデータセットは次のコマンドで所定の位置に配置します。
+```
+mkdir data
+mkdir data/train
+mkdir data/train/real
+mkdir data/val
+cp traindata/* data/train/real/
+cp validdata/* data/val/
+```
+
+### 学習
+
+```
+python3 train.py +experiment=parseq-tiny --config-name=main_tiny384_ndl
+```
+
+### 学習済モデルのONNXへの変換
+convert2onnx.pyのチェックポイントのパスを書き換えて実行する。
+```
+python3 convert2onnx.py
+```
+parseq-ndl-32x384-tiny-10.onnxが生成されます。
+
+NDL古典籍OCR-Liteで利用する場合は、--rec-weightsオプションでonnxファイルのパスを指定してください。
