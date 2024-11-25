@@ -1,8 +1,9 @@
 import shutil
 import os
 from PIL import Image
-
+from tqdm import tqdm
 from yaml import safe_load
+import glob
 charobj={}
 with open("./configs/charset/NDLmoji.yaml",encoding="utf-8") as f:
     charobj=safe_load(f)
@@ -129,11 +130,11 @@ def createDataset(inputPath, gtFile, outputPath, checkValid=True):
     env.close()
     print('Created dataset with %d samples' % nSamples)
 
-createDataset_v2(".",
+createDataset(".",
               "./oneline_honkoku.txt",
               "traindata",
               checkValid=True)
-createDataset_v2(".",
+createDataset(".",
               "./oneline_honkoku_val.txt",
               "valdata",
               checkValid=True)

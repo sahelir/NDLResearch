@@ -72,7 +72,7 @@ Darwin Bautista, Rowel Atienza. Scene text recognition with permuted autoregress
 
 ここではparseq-tinyを利用してモデルを作成します。
 
-この項で紹介する当館が作成したサンプルコードはparseqcodeディレクトリ以下にあります。
+この項で紹介する当館が作成したサンプルコードは[parseqcode](./parseqcode)ディレクトリ以下にあります。
 
 ### 環境構築
 ```
@@ -85,6 +85,7 @@ python3 -m pip install --upgrade pip
 platform=cu118
 make torch-${platform}
 pip install -r requirements/core.${platform}.txt -e .[train,test]
+pip install tqdm
 ```
 
 そのままではONNX変換時にエラーが発生することがあるので、parseq/strhub/models/parseq/model.py
@@ -111,7 +112,7 @@ honkoku_rawdataディレクトリ内に行ごとの切り出し画像とテキ�
 ……
 ```
 
-convertkotensekidata2lmdb.pyを実行するとtraindataとvaliddataディレクトリにparseqの学習に利用するlmdb形式のデータセット(data.mdb、lock.mdb)が出力されます。
+[convertkotensekidata2lmdb.py](./parseqcode/convertkotensekidata2lmdb.py)を実行するとtraindataとvaliddataディレクトリにparseqの学習に利用するlmdb形式のデータセット(data.mdb、lock.mdb)が出力されます。
 
 ```
 python3 convertkotensekidata2lmdb.py
@@ -134,10 +135,12 @@ python3 train.py +experiment=parseq-tiny --config-name=main_tiny384_ndl
 ```
 
 ### 学習済モデルのONNXへの変換
-convert2onnx.pyのチェックポイントのパスを書き換えて実行する。
+[convert2onnx.py](./parseqcode/convert2onnx.py)の「チェックポイントのパス」を書き換えて実行します。
+
 ```
 python3 convert2onnx.py
 ```
+
 parseq-ndl-32x384-tiny-10.onnxが生成されます。
 
 NDL古典籍OCR-Liteで利用する場合は、--rec-weightsオプションでonnxファイルのパスを指定してください。
