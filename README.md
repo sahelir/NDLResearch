@@ -81,7 +81,7 @@ OCR結果を保存する出力先ディレクトリを相対パスまたは絶�
 
 
 ## モデルの再学習及びカスタマイズについて（開発者向け情報）
-[追加学習手順](/train/README.md)をご覧ください。
+[学習及びモデル変換手順](/train/README.md)をご覧ください。
 
 
 ## 技術情報について（開発者向け情報）
@@ -94,7 +94,7 @@ NDL古典籍OCR-Liteは「レイアウト認識」、「文字列認識」、「
 
 [2]Darwin Bautista, Rowel Atienza. Scene text recognition with permuted autoregressive sequence models. arXiv:2212.06966, 2022. (https://arxiv.org/abs/2207.06966)
 
-レイアウト認識及び文字列認識の機械学習モデルは、いずれもpytorchをフレームワークとした学習を行った後にONNX形式に変換して利用しています。詳しくは[追加学習手順](/train/README.md)をご覧ください。
+レイアウト認識及び文字列認識の機械学習モデルは、いずれもpytorchをフレームワークとした学習を行った後にONNX形式に変換して利用しています。詳しくは[学習及びモデル変換手順](/train/README.md)をご覧ください。
 
 
 開発背景及び技術検討に関するより詳細な情報については、次の論文（※2024年12月公開予定）をご覧ください。
