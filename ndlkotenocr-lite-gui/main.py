@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 import time
 from concurrent.futures import ThreadPoolExecutor
 import time
+import json
 import shutil
 import argparse
 from reading_order.xy_cut.eval import eval_xml
@@ -76,6 +77,7 @@ def main(page: ft.Page):
                 imgnamelist.append(os.path.basename(inputpath))
                 allxmlstr="<OCRDATASET>\n"
                 alltextlist=[]
+                resjsonarray=[]
                 for img,imgname in zip(inputdivlist,imgnamelist):
                     img_h,img_w=img.shape[:2]
                     detections,classeslist=ocr.inference_on_detector(args=args,inputname=imgname,npimage=img,outputpath=outputpath,issaveimg=chkbx_visualize.value)
@@ -91,6 +93,7 @@ def main(page: ft.Page):
                         if det["class_index"]==0:
                             resultobj[0][0].append([xmin,ymin,xmax,ymax])
                         resultobj[1][det["class_index"]].append([xmin,ymin,xmax,ymax,conf])
+
                     xmlstr=convert_to_xml_string3(img_w, img_h, imgname, classeslist, resultobj,score_thr = 0.3,min_bbox_size= 5,use_block_ad= False)
                     xmlstr="<OCRDATASET>"+xmlstr+"</OCRDATASET>"
                     root = ET.fromstring(xmlstr)
@@ -112,6 +115,17 @@ def main(page: ft.Page):
                         alltextlist.append("\n".join(resultlines))
                         for idx,lineobj in enumerate(root.findall(".//LINE")):
                             lineobj.set("STRING",resultlines[idx])
+                            xmin=int(lineobj.get("X"))
+                            ymin=int(lineobj.get("Y"))
+                            line_w=int(lineobj.get("WIDTH"))
+                            line_h=int(lineobj.get("HEIGHT"))
+                            try:
+                                conf=float(lineobj.get("CONF"))
+                            except:
+                                conf=0
+                            jsonobj={"boundingBox": [[xmin,ymin],[xmin,ymin+line_h],[xmin+line_w,ymin],[xmin+line_w,ymin+line_h]],
+                                "id": idx,"isVertical": "true","text": resultlines[idx],"isTextline": "true","confidence": conf}
+                            resjsonarray.append(jsonobj)
                     allxmlstr+=(ET.tostring(root.find("PAGE"), encoding='unicode')+"\n")
                     e2=time.time()
                 allxmlstr+="</OCRDATASET>"
@@ -119,6 +133,18 @@ def main(page: ft.Page):
                     alltextlist=alltextlist[::-1]
                 with open(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".xml"),"w",encoding="utf-8") as wf:
                     wf.write(allxmlstr)
+                with open(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".json"),"w",encoding="utf-8") as wf:
+                    alljsonobj={
+                        "contents":[resjsonarray],
+                        "imginfo": {
+                            "img_width": img_w,
+                            "img_height": img_h,
+                            "img_path":inputpath,
+                            "img_name":os.path.basename(inputpath)
+                        }
+                    }
+                    alljsonstr=json.dumps(alljsonobj,ensure_ascii=False,indent=2)
+                    wf.write(alljsonstr)
                 with open(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".txt"),"w",encoding="utf-8") as wtf:
                     wtf.write("\n".join(alltextlist))
                     outputtxtlist.append("\n".join(alltextlist))

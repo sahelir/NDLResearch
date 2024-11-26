@@ -12,6 +12,7 @@ from yaml import safe_load
 from concurrent.futures import ThreadPoolExecutor
 import time
 import shutil
+import json
 import glob
 from reading_order.xy_cut.eval import eval_xml
 from ndl_parser import convert_to_xml_string3
@@ -95,6 +96,7 @@ def process(args):
         imgnamelist.append(os.path.basename(inputpath))
         allxmlstr="<OCRDATASET>\n"
         alltextlist=[]
+        resjsonarray=[]
         for img,imgname in zip(inputdivlist,imgnamelist):
             img_h,img_w=img.shape[:2]
             detections,classeslist=inference_on_detector(args=args,inputname=imgname,npimage=img,outputpath=args.output,issaveimg=args.viz)
@@ -131,6 +133,17 @@ def process(args):
                 alltextlist.append("\n".join(resultlines))
                 for idx,lineobj in enumerate(root.findall(".//LINE")):
                     lineobj.set("STRING",resultlines[idx])
+                    xmin=int(lineobj.get("X"))
+                    ymin=int(lineobj.get("Y"))
+                    line_w=int(lineobj.get("WIDTH"))
+                    line_h=int(lineobj.get("HEIGHT"))
+                    try:
+                        conf=float(lineobj.get("CONF"))
+                    except:
+                        conf=0
+                    jsonobj={"boundingBox": [[xmin,ymin],[xmin,ymin+line_h],[xmin+line_w,ymin],[xmin+line_w,ymin+line_h]],
+                        "id": idx,"isVertical": "true","text": resultlines[idx],"isTextline": "true","confidence": conf}
+                    resjsonarray.append(jsonobj)
             allxmlstr+=(ET.tostring(root.find("PAGE"), encoding='unicode')+"\n")
             e2=time.time()
             #print("Text Recogntion Done. Calculation time:",e2-e1)
@@ -139,6 +152,18 @@ def process(args):
             alltextlist=alltextlist[::-1]
         with open(os.path.join(args.output,os.path.basename(inputpath).split(".")[0]+".xml"),"w",encoding="utf-8") as wf:
             wf.write(allxmlstr)
+        with open(os.path.join(args.output,os.path.basename(inputpath).split(".")[0]+".json"),"w",encoding="utf-8") as wf:
+            alljsonobj={
+                "contents":[resjsonarray],
+                "imginfo": {
+                    "img_width": img_w,
+                    "img_height": img_h,
+                    "img_path":inputpath,
+                    "img_name":os.path.basename(inputpath)
+                }
+            }
+            alljsonstr=json.dumps(alljsonobj,ensure_ascii=False,indent=2)
+            wf.write(alljsonstr)
         with open(os.path.join(args.output,os.path.basename(inputpath).split(".")[0]+".txt"),"w",encoding="utf-8") as wtf:
             wtf.write("\n".join(alltextlist))
         #print("Total calculation time (Detection + Recognition):",time.time()-start)
