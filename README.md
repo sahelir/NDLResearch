@@ -19,7 +19,7 @@ Windows(Windows 10)、Intel Mac(macOS Sequoia)及びLinux(Ubuntu 22.04)環境に
 
 ## デスクトップアプリケーションによる利用
 
-[releases](/releases)からお使いのOS環境（Windows/Mac/Linux）に合ったファイルをダウンロードしてください。
+[releases](https://github.com/ndl-lab/ndlkotenocr-lite/releases)からお使いのOS環境（Windows/Mac/Linux）に合ったファイルをダウンロードしてください。
 
 zipファイルを展開後、「ndlkotenocr_lite_gui」をダブルクリックする等で実行してください。
 
