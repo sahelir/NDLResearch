@@ -56,7 +56,7 @@ def inference_on_detector(args,inputname:str,npimage:np.ndarray,outputpath:str,i
     pil_image =detector.draw_detections(drawimage, detections=detections)
     if issaveimg:
         os.makedirs(outputpath,exist_ok=True)
-        output_path = os.path.join(outputpath,f"{Path(inputname).name}")
+        output_path = os.path.join(outputpath,f"viz_{Path(inputname).name}")
         print(f"[INFO] Saving result on {output_path}")
         pil_image.save(output_path)
     return detections,classeslist
@@ -185,7 +185,7 @@ if __name__=="__main__":
     parser.add_argument("--det-iou-threshold", type=float, required=False, default=0.3)
     parser.add_argument("--rec-weights", type=str, required=False, help="Path to parseq-tiny onnx file", default="model/parseq-ndl-32x384-tiny-10.onnx")
     parser.add_argument("--rec-classes", type=str, required=False, help="Path to list of class in yaml file", default="config/NDLmoji.yaml")
-    parser.add_argument("--device", type=str, required=False, help="Device use (cpu or cude)", choices=["cpu", "cuda"], default="cpu")
+    parser.add_argument("--device", type=str, required=False, help="Device use (cpu or cuda)", choices=["cpu", "cuda"], default="cpu")
     args = parser.parse_args()
     process(args)
     
