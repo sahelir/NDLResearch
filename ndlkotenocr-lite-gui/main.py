@@ -149,7 +149,7 @@ def main(page: ft.Page):
                     wtf.write("\n".join(alltextlist))
                     outputtxtlist.append("\n".join(alltextlist))
                     if chkbx_visualize.value:
-                        visualizepathlist.append(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".jpg"))
+                        visualizepathlist.append(os.path.join(outputpath,"viz_"+os.path.basename(inputpath).split(".")[0]+".jpg"))
                 progressbar.value+=1/allsum
                 preview_prev_btn.disabled=False
                 preview_next_btn.disabled=False
