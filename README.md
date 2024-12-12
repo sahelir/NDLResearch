@@ -21,6 +21,10 @@ Windows(Windows 10)、Intel Mac(macOS Sequoia)及びLinux(Ubuntu 22.04)環境に
 
 [releases](https://github.com/ndl-lab/ndlkotenocr-lite/releases)からお使いのOS環境（Windows/Mac/Linux）に合ったファイルをダウンロードしてください。
 
+Mac環境における利用の場合には、次の記事も参考にしてください。
+
+https://zenn.dev/nakamura196/articles/c62a465537ff20
+
 zipファイルを展開後、「ndlkotenocr_lite」をダブルクリックする等で実行してください。
 
 デスクトップアプリケーションの操作方法及びビルド方法については[デスクトップアプリケーションの利用方法](./ndlkotenocr-lite-gui/README.md)を参照してください。
@@ -100,3 +104,5 @@ NDL古典籍OCR-Liteは「レイアウト認識」、「文字列認識」、「
 開発背景及び技術検討に関するより詳細な情報については、次の論文（※2024年12月公開予定）をご覧ください。
 
 青池亨. CPU環境で高速に動作する軽量OCR「NDL古典籍OCR-Lite」の開発. 人文科学とコンピュータシンポジウム論文集 : じんもんこん2024 (情報処理学会シンポジウムシリーズ = IPSJ symposium series ; vol. 2024 no. 1). 情報処理学会, 2024.12
+
+[ポスター](./resource/ndl_jinmonkon2024.pdf)
