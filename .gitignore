@@ -2,4 +2,6 @@
 /ocrenv/
 /ndlkotenocr-lite-gui/build/
 /ndlkotenocr-lite-gui/src/
+/ndlkotenocr-lite-gui/userconf.yaml
+/ndlkotenocr-lite-gui/debug.log
 /example/

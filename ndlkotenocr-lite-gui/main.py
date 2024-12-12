@@ -1,5 +1,5 @@
-#import logging
-#logging.basicConfig(filename='F:\debug.log', encoding='utf-8',level=logging.DEBUG)
+import logging
+logging.basicConfig(filename='debug.log', encoding='utf-8',level=logging.DEBUG)
 import flet as ft
 import sys
 import os
@@ -14,6 +14,9 @@ import time
 import json
 import shutil
 import argparse
+import yaml
+import io
+
 from reading_order.xy_cut.eval import eval_xml
 from ndl_parser import convert_to_xml_string3
 
@@ -27,6 +30,46 @@ def main(page: ft.Page):
     inputpathlist=[]
     visualizepathlist=[]
     outputtxtlist=[]
+
+    def create_pdf_func(outputpath:str,img:object,bboxlistobj:dict):
+        import reportlab
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import portrait
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+        from reportlab.lib.units import mm
+        from reportlab.lib.utils import ImageReader
+        from reportlab.lib.colors import blue
+        pdfmetrics.registerFont(UnicodeCIDFont('HeiseiMin-W3', isVertical=True))
+        print((img.shape[1],img.shape[0]))
+        c = canvas.Canvas(outputpath, pagesize=(img.shape[1],img.shape[0]))
+        pilimg_data = io.BytesIO()
+        pilimg=Image.fromarray(img)
+        pilimg.save(pilimg_data, format='png')
+        pilimg_data.seek(0)
+        side_out = ImageReader(pilimg_data)
+        #Image.fromarray(new_image)
+        c.drawImage(side_out,0,0)
+        c.setFont('HeiseiMin-W3', 24)
+        c.setFillColor(blue)
+        for bboxobj in bboxlistobj:
+            bbox=bboxobj["boundingBox"]
+            text=bboxobj["text"]
+            x_center=(bbox[0][0]+bbox[2][0])//2
+            y_center=img.shape[0]-bbox[0][1]#(bbox[0][1]+bbox[1][1])//2
+            c.drawString(x_center,y_center, text)
+        c.save()
+    def parts_control(flag:bool):
+        file_upload_btn.disabled=flag
+        directory_upload_btn.disabled=flag
+        directory_output_btn.disabled=flag
+        chkbx_visualize.disabled=flag
+        customize_btn.disabled=flag
+        preview_prev_btn.disabled=flag
+        preview_next_btn.disabled=flag
+        ocr_btn.disabled=flag
+
+
     def ocr_button_result(e):
         progressbar.value=0
         outputpath=selected_output_path.value
@@ -42,13 +85,7 @@ def main(page: ft.Page):
         args = parser.parse_args()
         nonlocal inputpathlist,outputtxtlist,visualizepathlist,preview_index
         preview_index=0
-        file_upload_btn.disabled=True
-        directory_upload_btn.disabled=True
-        directory_output_btn.disabled=True
-        chkbx_visualize.disabled=True
-        preview_prev_btn.disabled=True
-        preview_next_btn.disabled=True
-        ocr_btn.disabled=True
+        parts_control(True)
         page.update()
         progressmessage.value="Start"
         progressmessage.update()
@@ -131,25 +168,29 @@ def main(page: ft.Page):
                 allxmlstr+="</OCRDATASET>"
                 if alllinecnt==0 or tatelinecnt/alllinecnt>0.5:
                     alltextlist=alltextlist[::-1]
-                with open(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".xml"),"w",encoding="utf-8") as wf:
-                    wf.write(allxmlstr)
-                with open(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".json"),"w",encoding="utf-8") as wf:
-                    alljsonobj={
-                        "contents":[resjsonarray],
-                        "imginfo": {
-                            "img_width": img_w,
-                            "img_height": img_h,
-                            "img_path":inputpath,
-                            "img_name":os.path.basename(inputpath)
-                        }
+                outputtxtlist.append("\n".join(alltextlist))
+                alljsonobj={
+                    "contents":[resjsonarray],
+                    "imginfo": {
+                        "img_width": img_w,
+                        "img_height": img_h,
+                        "img_path":inputpath,
+                        "img_name":os.path.basename(inputpath)
                     }
-                    alljsonstr=json.dumps(alljsonobj,ensure_ascii=False,indent=2)
-                    wf.write(alljsonstr)
-                with open(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".txt"),"w",encoding="utf-8") as wtf:
-                    wtf.write("\n".join(alltextlist))
-                    outputtxtlist.append("\n".join(alltextlist))
-                    if chkbx_visualize.value:
-                        visualizepathlist.append(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".jpg"))
+                }
+                if chkbx_xml.value:
+                    with open(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".xml"),"w",encoding="utf-8") as wf:
+                        wf.write(allxmlstr)
+                if chkbx_json.value:
+                    with open(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".json"),"w",encoding="utf-8") as wf:
+                        wf.write(json.dumps(alljsonobj,ensure_ascii=False,indent=2))
+                if chkbx_txt.value:
+                    with open(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".txt"),"w",encoding="utf-8") as wtf:
+                        wtf.write("\n".join(alltextlist))
+                if chkbx_pdf.value:
+                    create_pdf_func(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".pdf"),img,resjsonarray)
+                if chkbx_visualize.value:
+                    visualizepathlist.append(os.path.join(outputpath,"viz_"+os.path.basename(inputpath)))
                 progressbar.value+=1/allsum
                 preview_prev_btn.disabled=False
                 preview_next_btn.disabled=False
@@ -166,11 +207,7 @@ def main(page: ft.Page):
             progressmessage.value=e
             progressmessage.update()
         finally:
-            file_upload_btn.disabled=False
-            directory_upload_btn.disabled=False
-            directory_output_btn.disabled=False
-            chkbx_visualize.disabled=False
-            ocr_btn.disabled=False
+            parts_control(False)
             page.update()
 
     
@@ -246,6 +283,17 @@ def main(page: ft.Page):
         preview_text.update()
         page.update()
     
+    def handle_dlg_modal_close(e):
+        config_obj={
+            "json":chkbx_json.value,
+            "txt":chkbx_txt.value,
+            "xml":chkbx_xml.value,
+            "pdf":chkbx_pdf.value
+        }
+        with open('userconf.yaml','w')as wf:
+            yaml.dump(config_obj, wf, default_flow_style=False, allow_unicode=True)
+        page.close(dlg_modal)
+
     preview_image=ft.Image(src="dummy.dat", width=400, height=300)
     preview_text=ft.Text(value="",height=300,selectable=True)
 
@@ -257,6 +305,23 @@ def main(page: ft.Page):
     selected_output_path = ft.Text()
     progressmessage=ft.Text()
     chkbx_visualize = ft.Checkbox(label="認識箇所の可視化画像を保存する", value=True)
+    chkbx_json = ft.Checkbox(label="JSON形式", value=True)
+    chkbx_txt = ft.Checkbox(label="TXT形式", value=True)
+    chkbx_xml = ft.Checkbox(label="XML形式", value=True)
+    chkbx_pdf = ft.Checkbox(label="透明テキスト付PDF(ベータ)", value=False)
+
+    if os.path.exists("userconf.yaml"):
+        with open('userconf.yaml', encoding='utf-8')as f:
+            config_obj= yaml.safe_load(f)
+            if "json" in config_obj:
+                chkbx_json.value=config_obj["json"]
+            if "xml" in config_obj:
+                chkbx_xml.value=config_obj["xml"]
+            if "txt" in config_obj:
+                chkbx_txt.value=config_obj["txt"]
+            if "pdf" in config_obj:
+                chkbx_pdf.value=config_obj["pdf"]
+
     
     page.overlay.extend([pick_files_dialog,pick_directory_dialog,pick_output_dialog])
     file_upload_btn=ft.ElevatedButton(
@@ -304,6 +369,23 @@ def main(page: ft.Page):
     )
     preview_prev_btn=ft.ElevatedButton(text="前の画像", on_click=prev_image,disabled=True)
     preview_next_btn=ft.ElevatedButton(text="次の画像", on_click=next_image,disabled=True)
+    customize_btn=ft.ElevatedButton("出力形式の選択", on_click=lambda e: page.open(dlg_modal))
+    dlg_modal = ft.AlertDialog(
+        modal=True,
+        title=ft.Text("設定"),
+        content=ft.Text("出力形式を選択してください"),
+        actions=[
+            chkbx_txt,
+            chkbx_json,
+            chkbx_xml,
+            chkbx_pdf,
+            ft.TextButton("OK", on_click=handle_dlg_modal_close),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+        on_dismiss=lambda e: page.add(
+            ft.Text("Modal dialog dismissed"),
+        ),
+    )
     page.add(
         ft.Row(
             [
@@ -330,7 +412,8 @@ def main(page: ft.Page):
         ft.Divider(),
         ft.Row(
             [ocr_btn,
-             chkbx_visualize,
+             ft.Column([chkbx_visualize,customize_btn
+                        ]),
              ft.Column([progressmessage,progressbar]),
             ]
         ),
