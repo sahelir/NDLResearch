@@ -9,7 +9,10 @@ NDL古典籍OCR-Liteの使い方を説明します。
 
 Windows 10の場合は、「WindowsによってPCが保護されました」→「詳細情報」→「実行」を選んでください。
 
-macOS（Sequoia）の場合は、https://support.apple.com/ja-jp/guide/mac-help/mh40616/mac
+macOSの場合は、
+
+https://zenn.dev/nakamura196/articles/c62a465537ff20
+
 の手順に従ってください。
 
 なお、初回の起動には1分程度時間を要することがあります。お待ちください。
@@ -18,7 +21,7 @@ macOS（Sequoia）の場合は、https://support.apple.com/ja-jp/guide/mac-help/
 
 <img src="../resource/control.jpg" width="600">
 
-①OCR処理をかけたいファイルまたはディレクトリを指定します。
+①OCR処理をかけたいファイルまたはディレクトリを指定します。***v1.1.1からは画像（jpg,png,tiff,bmp,jp2）に加えてPDFファイルに対する処理が可能です。***
 
 ②出力先となるディレクトリを指定します。
 
