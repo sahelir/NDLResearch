@@ -1,5 +1,5 @@
 import logging
-logging.basicConfig(filename='debug.log', encoding='utf-8',level=logging.DEBUG)
+#logging.basicConfig(filename='debug.log', encoding='utf-8',level=logging.DEBUG)
 import flet as ft
 import sys
 import os
@@ -16,12 +16,14 @@ import shutil
 import argparse
 import yaml
 import io
+import glob
+import pypdfium2
 
 from reading_order.xy_cut.eval import eval_xml
 from ndl_parser import convert_to_xml_string3
 
 name = "NDLkotenOCR-Lite-GUI"
-
+PDFTMPPATH="4ab7ecc3-53fb-b3e7-64e8-a809b5a483d2"
 
 
 def main(page: ft.Page):
@@ -31,7 +33,7 @@ def main(page: ft.Page):
     visualizepathlist=[]
     outputtxtlist=[]
 
-    def create_pdf_func(outputpath:str,img:object,bboxlistobj:dict):
+    def create_pdf_func(outputpath:str,img:object,bboxlistobj:dict,viztxtflag:bool):
         import reportlab
         from reportlab.pdfgen import canvas
         from reportlab.lib.pagesizes import portrait
@@ -50,13 +52,16 @@ def main(page: ft.Page):
         side_out = ImageReader(pilimg_data)
         #Image.fromarray(new_image)
         c.drawImage(side_out,0,0)
-        c.setFont('HeiseiMin-W3', 24)
-        c.setFillColor(blue)
+        if viztxtflag:
+            c.setFillColor(blue)
+        else:
+            c.setFillColor(blue,alpha=0.0)
         for bboxobj in bboxlistobj:
             bbox=bboxobj["boundingBox"]
             text=bboxobj["text"]
             x_center=(bbox[0][0]+bbox[2][0])//2
             y_center=img.shape[0]-bbox[0][1]#(bbox[0][1]+bbox[1][1])//2
+            c.setFont('HeiseiMin-W3', abs(bbox[2][0]-bbox[0][0])*3//4)
             c.drawString(x_center,y_center, text)
         c.save()
     def parts_control(flag:bool):
@@ -99,6 +104,7 @@ def main(page: ft.Page):
             progressbar.update()
             outputtxtlist.clear()
             visualizepathlist.clear()
+            visualizepathlist=[]
             for idx,inputpath in enumerate(inputpathlist):
                 #progressbar.semantics_label=inputpath
                 progressmessage.value=inputpath
@@ -136,7 +142,7 @@ def main(page: ft.Page):
                     root = ET.fromstring(xmlstr)
                     eval_xml(root, logger=None)
                     targetdflist=[]
-                    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="thread") as executor:
+                    with ThreadPoolExecutor(max_workers=8, thread_name_prefix="thread") as executor:
                         for lineobj in root.findall(".//LINE"):
                             xmin=int(lineobj.get("X"))
                             ymin=int(lineobj.get("Y"))
@@ -188,7 +194,7 @@ def main(page: ft.Page):
                     with open(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".txt"),"w",encoding="utf-8") as wtf:
                         wtf.write("\n".join(alltextlist))
                 if chkbx_pdf.value:
-                    create_pdf_func(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".pdf"),img,resjsonarray)
+                    create_pdf_func(os.path.join(outputpath,os.path.basename(inputpath).split(".")[0]+".pdf"),img,resjsonarray,chkbx_pdf_viztxt.value)
                 if chkbx_visualize.value:
                     visualizepathlist.append(os.path.join(outputpath,"viz_"+os.path.basename(inputpath)))
                 progressbar.value+=1/allsum
@@ -217,7 +223,28 @@ def main(page: ft.Page):
             nonlocal inputpathlist,outputtxtlist
             inputpathlist.clear()
             outputtxtlist.clear()
-            inputpathlist.append(e.files[0].path)
+            ext=e.files[0].path.split(".")[-1]
+            if ext=="pdf":
+                filestem=os.path.basename(e.files[0].path)[:-4]
+                progressmessage.value="pdfファイルの前処理中…… {} ".format(e.files[0].path)
+                parts_control(True)
+                page.update()
+                for p in glob.glob(os.path.join(os.getcwd(),PDFTMPPATH,"*.jpg")):
+                    if os.path.isfile(p):
+                        os.remove(p)
+                os.makedirs(os.path.join(os.getcwd(),PDFTMPPATH), exist_ok=True)
+                doc = pypdfium2.PdfDocument(selected_input_path.value)
+                pdfarray = doc.render(pypdfium2.PdfBitmap.to_pil,scale=200 / 72)
+                for ix,image in enumerate(list(pdfarray)):
+                    outputtmppath=os.path.join(os.getcwd(),PDFTMPPATH,"{}_{:05}.jpg".format(filestem,ix))
+                    inputpathlist.append(outputtmppath)
+                    image=image.convert("RGB")
+                    image.save(outputtmppath)
+                progressmessage.value="pdfファイルの前処理完了"
+                parts_control(False)
+                page.update()
+            else:
+                inputpathlist.append(e.files[0].path)
             if selected_output_path.value!=None:
                 ocr_btn.disabled=False
         selected_input_path.update()
@@ -230,14 +257,35 @@ def main(page: ft.Page):
             nonlocal inputpathlist,outputtxtlist
             inputpathlist.clear()
             outputtxtlist.clear()
+            cleanflag=False
             for inputname in os.listdir(e.path):
                 inputpath=os.path.join(e.path,inputname)
                 ext=inputpath.split(".")[-1]
-                if ext in ["jpg","png","tiff","jp2","tif","jpeg","bmp"]:
+                if ext in ["jpg","png","tiff","jp2","tif","jpeg","bmp"] and os.path.isfile(inputpath):
                     inputpathlist.append(inputpath)
                     if selected_output_path.value!=None:
-                        print(selected_output_path.value)
                         ocr_btn.disabled=False
+                elif ext=="pdf" and os.path.isfile(inputpath):
+                    filestem=os.path.basename(inputpath)[:-4]
+                    progressmessage.value="pdfファイルの前処理中…… {} ".format(inputpath)
+                    parts_control(True)
+                    page.update()
+                    if not cleanflag:
+                        for p in glob.glob(os.path.join(os.getcwd(),PDFTMPPATH,"*.jpg")):
+                            if os.path.isfile(p):
+                                os.remove(p)
+                        cleanflag=True
+                    os.makedirs(os.path.join(os.getcwd(),PDFTMPPATH), exist_ok=True)
+                    doc = pypdfium2.PdfDocument(inputpath)
+                    pdfarray = doc.render(pypdfium2.PdfBitmap.to_pil,scale=200 / 72)
+                    for ix,image in enumerate(list(pdfarray)):
+                        outputtmppath=os.path.join(os.getcwd(),PDFTMPPATH,"{}_{:05}.jpg".format(filestem,ix))
+                        inputpathlist.append(outputtmppath)
+                        image=image.convert("RGB")
+                        image.save(outputtmppath)
+                    progressmessage.value="pdfファイルの前処理完了"
+                    parts_control(False)
+                    page.update()
             #print(inputpath)
         selected_input_path.update()
         page.update()
@@ -288,12 +336,16 @@ def main(page: ft.Page):
             "json":chkbx_json.value,
             "txt":chkbx_txt.value,
             "xml":chkbx_xml.value,
-            "pdf":chkbx_pdf.value
+            "pdf":chkbx_pdf.value,
+            "pdf_viztxt":chkbx_pdf_viztxt.value,
         }
         with open('userconf.yaml','w')as wf:
             yaml.dump(config_obj, wf, default_flow_style=False, allow_unicode=True)
         page.close(dlg_modal)
-
+    
+    def change_pdfstatus(e):
+        chkbx_pdf_viztxt.disabled=not chkbx_pdf.value
+        chkbx_pdf_viztxt.update()
     preview_image=ft.Image(src="dummy.dat", width=400, height=300)
     preview_text=ft.Text(value="",height=300,selectable=True)
 
@@ -308,8 +360,8 @@ def main(page: ft.Page):
     chkbx_json = ft.Checkbox(label="JSON形式", value=True)
     chkbx_txt = ft.Checkbox(label="TXT形式", value=True)
     chkbx_xml = ft.Checkbox(label="XML形式", value=True)
-    chkbx_pdf = ft.Checkbox(label="透明テキスト付PDF(ベータ)", value=False)
-
+    chkbx_pdf = ft.Checkbox(label="透明テキスト付PDF(ベータ)", value=False,on_change=change_pdfstatus)
+    chkbx_pdf_viztxt = ft.Checkbox(label="PDFに青色で文字を重ねる", value=True)
     if os.path.exists("userconf.yaml"):
         with open('userconf.yaml', encoding='utf-8')as f:
             config_obj= yaml.safe_load(f)
@@ -321,6 +373,11 @@ def main(page: ft.Page):
                 chkbx_txt.value=config_obj["txt"]
             if "pdf" in config_obj:
                 chkbx_pdf.value=config_obj["pdf"]
+            if "pdf_viztxt" in config_obj:
+                chkbx_pdf_viztxt.value=config_obj["pdf_viztxt"]
+                chkbx_pdf_viztxt.disabled=not chkbx_pdf.value
+
+
 
     
     page.overlay.extend([pick_files_dialog,pick_directory_dialog,pick_output_dialog])
@@ -378,13 +435,10 @@ def main(page: ft.Page):
             chkbx_txt,
             chkbx_json,
             chkbx_xml,
-            chkbx_pdf,
+            ft.Row([chkbx_pdf,chkbx_pdf_viztxt]),
             ft.TextButton("OK", on_click=handle_dlg_modal_close),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
-        on_dismiss=lambda e: page.add(
-            ft.Text("Modal dialog dismissed"),
-        ),
     )
     page.add(
         ft.Row(
