@@ -45,7 +45,10 @@ class RTMDet:
                 self.color_palette = np.random.uniform(0, 255, size=(len(self.classes), 3))
 
     def preprocess(self, img: np.ndarray) -> np.ndarray:
-        pil_image = Image.fromarray(img)
+        max_wh=max(img.shape[0],img.shape[1])
+        paddedimg=np.zeros((max_wh,max_wh,3)).astype(np.uint8)
+        paddedimg[:img.shape[0],:img.shape[1],:]=img.copy()
+        pil_image = Image.fromarray(paddedimg)
         self.image_width,self.image_height = pil_image.size
         #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         #resized = cv2.resize(img, (self.input_width, self.input_height))
