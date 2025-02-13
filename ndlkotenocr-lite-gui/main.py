@@ -261,7 +261,7 @@ def main(page: ft.Page):
             for inputname in os.listdir(e.path):
                 inputpath=os.path.join(e.path,inputname)
                 ext=inputpath.split(".")[-1]
-                if ext in ["jpg","png","tiff","jp2","tif","jpeg","bmp"] and os.path.isfile(inputpath):
+                if ext.lower() in ["jpg","png","tiff","jp2","tif","jpeg","bmp"] and os.path.isfile(inputpath):
                     inputpathlist.append(inputpath)
                     if selected_output_path.value!=None:
                         ocr_btn.disabled=False
