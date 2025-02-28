@@ -105,6 +105,6 @@ NDL古典籍OCR-Liteは「レイアウト認識」、「文字列認識」、「
 
 開発背景及び技術検討に関するより詳細な情報については、次の論文をご覧ください。
 
-[青池亨. CPU環境で高速に動作する軽量OCR「NDL古典籍OCR-Lite」の開発. 人文科学とコンピュータシンポジウム論文集 : じんもんこん2024 (情報処理学会シンポジウムシリーズ = IPSJ symposium series ; vol. 2024 no. 1). 情報処理学会, 2024.12](https://ipsj.ixsq.nii.ac.jp/records/241527)
+青池亨. CPU環境で高速に動作する軽量OCR「NDL古典籍OCR-Lite」の開発. 人文科学とコンピュータシンポジウム論文集 : じんもんこん2024 (情報処理学会シンポジウムシリーズ = IPSJ symposium series ; vol. 2024 no. 1). 情報処理学会, 2024.12[外部リンク](https://ipsj.ixsq.nii.ac.jp/records/241527)
 
 [ポスター](./resource/ndl_jinmonkon2024.pdf)
