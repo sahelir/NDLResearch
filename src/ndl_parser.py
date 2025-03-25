@@ -783,7 +783,7 @@ def refine_tb_relationship(tb_polygons, tb_info, classes, margin: int = 50):
 
     return tb_info
 
-
+#NEW EDITS TO SPLIT CONTENT
 def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
                            score_thr: float = 0.3,
                            min_bbox_size: int = 5,
@@ -796,7 +796,6 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
     res_textblockes = result[0]
     res_bbox = result[1]
     
-
     # convert text block masks to polygons
     tb_polygons = textblock_to_rect(classes, res_textblockes, min_bbox_size)
     tb_info, independ_lines = get_relationship_rect(res_bbox, tb_polygons, classes)
@@ -805,36 +804,26 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
 
     tb_cls_id = classes.index('text_block')
 
-    # Text block and line elems inside the text block
+    # separate margin area = top 1/3 of page
+    margin_area = img_h // 3
+
+    # separate blocks and lines by margin or main text
+    margin_blocks = []
+    main_blocks = []
+    margin_lines = []
+    main_lines = []
+
+    # text block and line elems inside the text block
     for j in range(len(tb_info)):
         if tb_info[j] is None or res_bbox[tb_cls_id][j][4] < score_thr or tb_polygons[j] is None:  # text block already converted
             continue
         
-        if len(tb_info[j]) == 0:  # text block without line elms
-            # create and add a line_main elem at least one
-            #x, y, w, h = make_bbox_from_poly(tb_polygons[j])
-            #if w >= min_bbox_size and h >= min_bbox_size:
-            #    s += f'    <LINE TYPE = "{name_to_org_name(classes[0])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}"></LINE>\n'
-            continue
-            #pass
+        x, y, w, h = make_bbox_from_poly(tb_polygons[j])
+        if y + h < margin_area:
+            margin_blocks.append((j, tb_polygons[j], tb_info[j]))
         else:
-            s = add_text_block_head(s, tb_polygons[j], res_bbox[tb_cls_id][j][4], '  ')
-            for c_id, i in tb_info[j]:
-                line = res_bbox[c_id][i]
-                conf = float(line[4])
-                if conf < score_thr:
-                    continue
-                if c_id == tb_cls_id:  # write as line_main
-                    x, y, w, h = make_bbox_from_poly(tb_polygons[i])
-                    if w >= min_bbox_size and h >= min_bbox_size:
-                        s += f'    <LINE TYPE = "{name_to_org_name(classes[0])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}"></LINE>\n'
-                else:
-                    x, y = int(line[0]), int(line[1])
-                    w, h = int(line[2] - line[0]), int(line[3] - line[1])
-                    s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
-        s += '  </TEXTBLOCK>\n'
-
-    # Line elems outside text_block and block_ad
+            main_blocks.append((j, tb_polygons[j], tb_info[j]))
+        
     for c, j in independ_lines:
         line = res_bbox[c][j]
         conf = float(line[4])
@@ -842,7 +831,61 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
             continue
         x, y = int(line[0]), int(line[1])
         w, h = int(line[2] - line[0]), int(line[3] - line[1])
-        s += f'  <LINE TYPE = "{name_to_org_name(classes[c])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
+        if y + h < margin_area:
+            margin_lines.append([c, j])
+        else:
+            main_lines.append([c, j])
+
+    # Output handling
+    #1. Margin Text
+    s += '  <MARGIN_BLOCKS>\n'
+    for j, poly, info in margin_blocks:
+        s = add_text_block_head(s, poly, res_bbox[tb_cls_id][j][4], '  ')
+        for c_id, i in info:
+            line = res_bbox[c_id][i]
+            conf = float(line[4])
+            if conf < score_thr:
+                continue
+            if c_id == tb_cls_id:
+                x, y, w, h = make_bbox_from_poly(tb_polygons[i])
+                if w >= min_bbox_size and h >= min_bbox_size:
+                    s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
+            else:
+                x, y = int(line[0]), int(line[1])
+                w, h = int(line[2] - line[0]), int(line[3] - line[1])
+                s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
+        s += '  </TEXTBLOCK>\n'
+    for c, j in margin_lines:
+        line = res_bbox[c][j]
+        x, y = int(line[0]), int(line[1])
+        w, h = int(line[2] - line[0]), int(line[3] - line[1])
+        s += f'  <LINE TYPE = "{name_to_org_name(classes[c])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{line[4]:0.3f}"></LINE>\n'
+    s += '  </MARGIN_BLOCKS>\n'
+
+    #2. Main Text
+    s += '  <MAIN_BLOCKS>\n'
+    for j, poly, info in main_blocks:
+        s = add_text_block_head(s, poly, res_bbox[tb_cls_id][j][4], '  ')
+        for c_id, i in info:
+            line = res_bbox[c_id][i]
+            conf = float(line[4])
+            if conf < score_thr:
+                continue
+            if c_id == tb_cls_id:
+                x, y, w, h = make_bbox_from_poly(tb_polygons[i])
+                if w >= min_bbox_size and h >= min_bbox_size:
+                    s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
+            else:
+                x, y = int(line[0]), int(line[1])
+                w, h = int(line[2] - line[0]), int(line[3] - line[1])
+                s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
+        s += '  </TEXTBLOCK>\n'
+    for c, j in margin_lines:
+        line = res_bbox[c][j]
+        x, y = int(line[0]), int(line[1])
+        w, h = int(line[2] - line[0]), int(line[3] - line[1])
+        s += f'  <LINE TYPE = "{name_to_org_name(classes[c])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{line[4]:0.3f}"></LINE>\n'
+    s += '  </MAIN_BLOCKS>\n'
 
     # Block elms other than block_ad
     for c in range(len(classes)):
@@ -857,7 +900,7 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
                 s += f'  <BLOCK TYPE = "{name_to_org_name(cls)}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></BLOCK>\n'
 
     s += '</PAGE>\n'
-
+# END EDITS TO SPLIT CONTENT
     return s
 
 

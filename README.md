@@ -1,3 +1,72 @@
+# Repository for the NDL Classical Books OCR-Lite application
+This is a repository that provides applications for performing text conversion using the NDL Classical Books OCR-Lite.
+NDL Classical Books OCR-Lite is an OCR that creates text data from digitized images of classical book materials such as Japanese old books from before the Edo period and Chinese books from before the Qing dynasty.
+It is characterized by OCR processing that does not require a GPU, and can be executed quickly on general home computers such as laptop computers and OS environments.
+It has been confirmed to work on Windows (Windows 10), Intel Mac (macOS Sequoia), and Linux (Ubuntu 22.04) environments.
+There are some documents that it is better at and some that it is not, but when compared to [NDL Classical Books OCR ver.3] (https://github.com/ndl-lab/ndlkotenocr_cli), it is known that the text conversion accuracy is about 2% lower. In the future, we will work to improve the accuracy to a level equivalent to or higher than NDL Classical Books OCR.
+This program was developed independently by utilizing the knowledge gained through the research activities of the [NDL Laboratory] (https://lab.ndl.go.jp) and data resources that have been constructed, accumulated, and published in the field of humanities informatics, including the [Transcription Data for Everyone (external site)] (https://github.com/yuta1984/honkoku-data).
+For details of the data sets used in the development and improvement of this program, please also refer to [Experiment in OCR Text Conversion of Classical Books](https://lab.ndl.go.jp/data_set/r4ocr/r4_koten/) and [OCR Learning Data Set (Transcription by Everyone)](https://github.com/ndl-lab/ndl-minhon-ocrdataset).
+This program is released by the National Diet Library under the CC BY 4.0 license. For details, please see [LICENCE](./LICENCE). For the license of libraries used when executing this application, please see [LICENCE_DEPENDENCIES](./LICENCE_DEPENDENCEIES).
+
+## Using the desktop application
+**When using the desktop application, please place the application in a path that does not contain Japanese (full-width characters). The application may not start if it contains full-width characters.**
+Download the file that matches your OS environment (Windows/Mac/Linux) from [releases](https://github.com/ndl-lab/ndlkotenocr-lite/releases).
+If you are using it in a Mac environment, please also refer to the following article.
+https://zenn.dev/nakamura196/articles/c62a465537ff20
+After extracting the zip file, double-click “ndlkotenocr_lite” to run it.
+For information on how to use and build the desktop application, please refer to [How to use the desktop application](./ndlkotenocr-lite-gui/README.md).
+
+The following gif animation shows a demo of converting “Fukagawa Kinshiro, et al. ‘Kameya Mannen Urashima Sakae 2-kan’, published in 1783 [Tenmei 3]. https://dl.ndl.go.jp/pid/8929445
+“ into text using the Windows desktop application.
+<img src=”resource/demo.gif“ width=”600">
+
+## Using from the command line
+* Python 3.10 or later is required to operate from the command line.
+Preliminary preparation
+```
+git clone https://github.com/ndl-lab/ndlkotenocr-lite
+cd ndlkotenocr-lite
+pip install -r requirements.txt
+cd src
+```
+Example 1 (Batch process the images in the directory named “Ryugu Kukai Tamatebako _ 3_9892834_0001” in the same directory, and output the results to a directory named tmpdir.
+```
+python3 ocr.py --sourcedir Ryugu Kugai Tamatebako _ 3巻_9892834_0001 --output tmpdir 
+```
+Example 2 (Processes the image named “digidepo_1287221_00000002.jpg” in the same directory and outputs the results to a directory named tmpdir.
+```
+python3 ocr.py --sourceimg digidepo_1287221_00000002.jpg --output tmpdir 
+```
+### Parameter descriptions
+#### `--sourcedir` option
+Specify the directory containing the images you want to process, using either an absolute or relative path. The program will process files with the extensions “jpg (jpeg is also acceptable)”, “png”, “tiff (tif is also acceptable)”, “jp2”, and “bmp” in the directory in sequence.
+#### `--sourceimg` option
+Specify the image you want to process directly using an absolute or relative path. It is possible to process files with the extensions “jpg (jpeg is also possible)”, “png”, “tiff (tif is also possible)”, “jp2”, and “bmp”.
+#### `--output` option
+Specify the output directory to save the OCR results to using an absolute or relative path.
+#### `--viz` option
+By specifying `--viz True`, an image with the character recognition areas displayed in blue frames will be output to the output directory.
+#### `--device` option (beta)
+Only on servers with compatible GPUs and on environments where onnxruntime-gpu is installed, specifying `--device cuda` will switch to processing using the GPU.
+
+## Example of OCR results
+OMIT FOR BREVITY
+
+## About model re-learning and customization (information for developers)
+Please see [Learning and model conversion procedure](/train/README.md).
+
+## About technical information (information for developers)
+NDL OCR-Lite for Historical Japanese Books is realized by combining three functions (modules): “layout recognition”, “character string recognition”, and “reading order sorting”.
+RTMDet[1] is used for layout recognition, and PARSeq[2] is used for character string recognition. The same module as that used in [NDL Classical Books OCR ver.3] (https://github.com/ndl-lab/ndlkotenocr_cli), which is publicly available from our library, is used for reading order sorting.
+[1]Chengqi Lyu, Wenwei Zhang, Haian Huang, Yue Zhou, Yudong Wang, Yanyi Liu, Shilong Zhang, Kai Chen. Rtmdet: An empirical study of designing real-time object detectors. arXiv preprint arXiv:2212.07784, 2022.(https://arxiv.org/abs/2212.07784)
+[2]Darwin Bautista, Rowel Atienza. Scene text recognition with permuted autoregressive sequence models. arXiv:2212.06966, 2022. (https://arxiv.org/abs/2207.06966)
+Both the layout recognition and character string recognition machine learning models were trained using pytorch as the framework, and then converted to ONNX format for use. For details, please see [Training and Model Conversion Procedure](/train/README.md).
+
+For more detailed information on the development background and technical considerations, please see the following paper.
+Aoike, Toru. Development of “NDL Classical Books OCR-Lite”, a lightweight OCR that runs quickly in a CPU environment. Proceedings of the Symposium on Humanities and Computers : Jinmonkon 2024 (IPSJ symposium series ; vol. 2024 no. 1). Information Processing Society of Japan, 2024.12 [External link](https://ipsj.ixsq.nii.ac.jp/records/241527)
+[Poster](./resource/ndl_jinmonkon2024.pdf)
+
+------------------------------------------
 # NDL古典籍OCR-Liteアプリケーションのリポジトリ
 
 NDL古典籍OCR-Liteを利用してテキスト化を実行するためのアプリケーションを提供するリポジトリです。

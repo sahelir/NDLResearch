@@ -8,7 +8,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 
-#以下はホームディレクトリを/hdd2/rtmdetで実行する場合の例
+#以下はホームディレクトリを/hdd2/rtmdetで実行する場合の例 | Load Config File
 cfg = mmengine.Config.fromfile('mmdetv3-rtmdet_s_8xb32-300e_coco_sample.py')
 cfg.model.test_cfg.max_per_img=1000
 cfg.model.bbox_head.num_classes=1
@@ -17,12 +17,12 @@ train_label_path = "/hdd2/rtmdet/layoutinputs/kotensekicocotrain/kotensekicocotr
 val_label_path = "/hdd2/rtmdet/layoutinputs/kotensekicocovalid/kotensekicocovalid.json"
 test_label_path = "/hdd2/rtmdet/layoutinputs/kotensekicocotest/kotensekicocotest.json"
 
-# 画像ファイルのパス
+# 画像ファイルのパス | Dataset paths
 train_img_path = "/hdd2/rtmdet/layoutinputs/kotensekicocotrain/img/"
 val_img_path = "/hdd2/rtmdet/layoutinputs/kotensekicocovalid/img/"
 test_img_path = "/hdd2/rtmdet/layoutinputs/kotensekicocotest/img/"
 
-# データセットのルートフォルダ
+# データセットのルートフォルダ | Register Custom Dataset
 root_path = "/hdd2/rtmdet/layoutinputs/"
 # 作業フォルダ（学習時のモデル出力先（エポック毎に出力))
 work_path = '/hdd2/rtmdet/work_dir_mmdetv3_rtmdet_s'
@@ -37,7 +37,8 @@ class TinyDataset(CocoDataset):
         ]
     }
 
-###augmentation等の設定
+###augmentation等の設定 | Define Data Augmentation & Processing Pipelines
+##Training Pipeline stage 1
 cfg.train_pipeline = [
     dict(type='LoadImageFromFile', backend_args=None),
     dict(type='LoadAnnotations', with_bbox=True),
@@ -60,6 +61,7 @@ cfg.train_pipeline = [
     dict(type='PackDetInputs')
 ]
 
+##Training Pipeline stage 2
 cfg.train_pipeline_stage2 = [
     dict(type='LoadImageFromFile', backend_args=None),
     dict(type='LoadAnnotations', with_bbox=True),
@@ -75,6 +77,7 @@ cfg.train_pipeline_stage2 = [
     dict(type='PackDetInputs')
 ]
 
+##Testing Pipeline
 cfg.test_pipeline = [
     dict(type='LoadImageFromFile', backend_args=None),
     dict(type='Resize', scale=(1280, 1280), keep_ratio=True),
@@ -86,6 +89,7 @@ cfg.test_pipeline = [
                    'scale_factor'))
 ]
 
+##Configure DataLoader & Training Parameters
 cfg.train_dataloader.dataset.pipeline=cfg.train_pipeline
 cfg.val_dataloader.dataset.pipeline=cfg.test_pipeline
 
@@ -137,7 +141,7 @@ cfg.metainfo = {
 
 #print(f'Config:\n{cfg.pretty_text}')
 
-# 編集したコンフィグをファイル出力して保存する場合にはコメントを外して適当なパスに書き換える
+# 編集したコンフィグをファイル出力して保存する場合にはコメントを外して適当なパスに書き換える | Set up distributed training
 #cfg.dump('/hdd2/rtmdet/mmdetv3-rtmdet_s_8xb32-300e_coco.py')
 
 

@@ -1,3 +1,120 @@
+# Learning and model conversion procedure
+We have confirmed that it works in the following environment.
+```
+CPU: Intel(R) Xeon(R) Gold 6330 CPU @ 2.00GHz
+RAM: 256GB
+GPU: NVIDIA A100 x 1
+OS: Ubuntu 22.04.4 LTS
+NVIDIA Driver Version: 535.113.01
+CUDA: 11.8
+```
+## Layout Recognition (RTMDet)
+Chengqi Lyu, Wenwei Zhang, Haian Huang, Yue Zhou, Yudong Wang, Yanyi Liu, Shilong Zhang, Kai Chen. Rtmdet: An empirical study of designing real-time object detectors. arXiv preprint arXiv:2212.07784, 2022.(https://arxiv.org/abs/2212.07784)
+to create a layout recognition model.
+In this section, we will only customize mmdetv3-rtmdet_s_8xb32-300e_coco.
+For other models of different sizes, please refer to the following URL.
+https://github.com/open-mmlab/mmdetection/tree/main/configs/rtmdet
+The sample code created by our museum, which is introduced in this section, is located in the [rtmcode](./rtmcode) directory.
+
+### Environment setup
+```
+cp rtmcode/* .
+python3 -m venv rtmdetenv
+source ./rtmdetenv/bin/activate
+python3 -m pip install --upgrade pip
+pip install torch==2.0.0 torchvision==0.15.1 torchaudio==2.0.1 --index-url https://download.pytorch.org/whl/cu118
+pip install mmcv==2.0.0 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
+pip install mmdet==3.0.0
+```
+### Converting training data
+The following procedure shows how to convert the [NDL-DocL dataset](https://github.com/ndl-lab/layout-dataset) released by the National Diet Library into annotation information for a training dataset. If you want to add data, please edit [rtmcococonverter.py](./rtmcode/rtmcococonverter.py) as appropriate and use it.
+```
+pip install pandas tqdm
+wget https://lab.ndl.go.jp/dataset/dataset_kotenseki.zip
+unzip dataset_kotenseki.zip
+python3 rtmcococonverter.py
+```
+### Training
+Please read [rtmdettrain.py](./rtmcode/rtmdettrain.py) in advance and modify the path of the dataset, etc.
+```
+python3 rtmdettrain.py
+```
+### Converting a trained model to ONNX
+We are referring to https://zenn.dev/inaturam/articles/c199357d7332bc
+.
+```
+pip install numpy==1.21.6 onnx==1.16.2 onnxruntime-gpu==1.18.1  mmdeploy==1.3.1
+git clone https://github.com/open-mmlab/mmdeploy -b v1.3.1
+python3 mmdeploy/tools/deploy.py ./rtmonnx_config.py
+    ./mmdetv3-rtmdet_s_8xb32-300e_coco_sample.py
+    ./work_dir_mmdetv3_rtmdet_s/epoch_300.pth
+    ./dataset_kotenseki/10301071/10301071_0006.jpg
+    --work-dir mmdeploy_model/rtmdet_s
+```
+The rtmdet-s-1280x1280.onnx file will be generated in the mmdeploy_model/rtmdet_s directory.
+When using it with NDL Classic Books OCR-Lite, specify the path to the onnx file with the --det-weights option.
+
+## Character Recognition (PARSeq)
+Darwin Bautista, Rowel Atienza. Scene text recognition with permuted autoregressive sequence models. arXiv:2212.06966, 2022. (https://arxiv.org/abs/2207.06966)
+to create a character string recognition model.
+In this case, we will use parseq-tiny to create a model.
+The sample code created by our museum, which is introduced in this section, is located in the [parseqcode](./parseqcode) directory.
+### Environment setup
+```
+python3 -m venv parseqenv
+source ./parseqenv/bin/activate
+git clone https://github.com/baudm/parseq
+cp -r parseqcode/* ./parseq
+cd parseq
+python3 -m pip install --upgrade pip
+platform=cu118
+make torch-${platform}
+pip install -r requirements/core.${platform}.txt -e .[train,test]
+pip install tqdm
+```
+As it is, errors may occur when converting to ONNX, so in parseq/strhub/models/parseq/model.py
+line 117 (the following part of the original repository)
+https://github.com/baudm/parseq/blob/1902db043c029a7e03a3818c616c06600af574be/strhub/models/parseq/model.py#L117)
+```tgt_mask = query_mask = torch.triu(torch.ones((num_steps, num_steps), dtype=torch.bool, device=self._device), 1)```
+to
+```tgt_mask = query_mask = torch.triu(torch.ones((num_steps, num_steps), dtype=torch.float, device=self._device), 1)```
+.
+### Converting the training data
+Please create a one-line dataset that maps image and text data together, referring to the “Usage” section of the [OCR training dataset (transcription by everyone)] (https://github.com/ndl-lab/ndl-minhon-ocrdataset).
+Suppose that the cropped images and text data for each line are arranged as follows in the honkoku_rawdata directory.
+```
+001E3C19A3E626EC382F86D201FEFB8C-001_0.jpg
+001E3C19A3E626EC382F86D201FEFB8C-001_0.txt
+001E3C19A3E626EC382F86D201FEFB8C-003_0.jpg
+001E3C19A3E626EC382F86D201FEFB8C-003_0.txt
+……
+```
+When you run [convertkotensekidata2lmdb.py](./parseqcode/convertkotensekidata2lmdb.py), the lmdb-format datasets (data.mdb, lock.mdb) used for training parseq will be output to the traindata and validdata directories.
+```
+python3 convertkotensekidata2lmdb.py
+```
+The output datasets can be placed in the specified locations using the following commands.
+```
+mkdir data
+mkdir data/train
+mkdir data/train/real
+mkdir data/val
+cp traindata/* data/train/real/
+cp validdata/* data/val/
+```
+### Training
+```
+python3 train.py +experiment=parseq-tiny --config-name=main_tiny384_ndl
+```
+### Converting the trained model to ONNX
+Run [convert2onnx.py](./parseqcode/convert2onnx.py) by changing the “checkpoint path”.
+```
+python3 convert2onnx.py
+```
+parseq-ndl-32x384-tiny-10.onnx will be generated.
+When using with NDL OCR-Lite, specify the path to the onnx file with the --rec-weights option.
+
+---------------------
 # 学習及びモデル変換手順
 次の環境で動作確認を実施しました。
 ```
