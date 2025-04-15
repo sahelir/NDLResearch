@@ -804,8 +804,8 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
 
     tb_cls_id = classes.index('text_block')
 
-    # separate margin area = top 1/3 of page
-    margin_area = img_h // 3
+    # separate margin area = top  of page
+    margin_area = img_h * .46/1.550
 
     # separate blocks and lines by margin or main text
     margin_blocks = []
@@ -823,10 +823,15 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
             margin_blocks.append((j, tb_polygons[j], tb_info[j]))
         else:
             main_blocks.append((j, tb_polygons[j], tb_info[j]))
-        
+
+    # sort blocks
+    margin_blocks.sort(key=lambda block: make_bbox_from_poly(block[1])[1])  # sort by Y
+    main_blocks.sort(key=lambda block: make_bbox_from_poly(block[1])[1])
+
     for c, j in independ_lines:
         line = res_bbox[c][j]
         conf = float(line[4])
+
         if conf < score_thr:
             continue
         x, y = int(line[0]), int(line[1])
@@ -835,12 +840,17 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
             margin_lines.append([c, j])
         else:
             main_lines.append([c, j])
+    
+    # sort margin_lines and main_lines
+    margin_lines.sort(key=lambda pair: res_bbox[pair[0]][pair[1]][1])
+    main_lines.sort(key=lambda pair: res_bbox[pair[0]][pair[1]][1])
 
     # Output handling
     #1. Margin Text
     s += '  <MARGIN_BLOCKS>\n'
     for j, poly, info in margin_blocks:
         s = add_text_block_head(s, poly, res_bbox[tb_cls_id][j][4], '  ')
+
         for c_id, i in info:
             line = res_bbox[c_id][i]
             conf = float(line[4])
@@ -880,7 +890,7 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
                 w, h = int(line[2] - line[0]), int(line[3] - line[1])
                 s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
         s += '  </TEXTBLOCK>\n'
-    for c, j in margin_lines:
+    for c, j in main_lines:
         line = res_bbox[c][j]
         x, y = int(line[0]), int(line[1])
         w, h = int(line[2] - line[0]), int(line[3] - line[1])
