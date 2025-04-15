@@ -805,6 +805,7 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
     tb_cls_id = classes.index('text_block')
 
     # separate margin area = top  of page
+    margin_area_begin = img_h/8.5
     margin_area = img_h * .46/1.550
 
     # separate blocks and lines by margin or main text
@@ -819,31 +820,32 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
             continue
         
         x, y, w, h = make_bbox_from_poly(tb_polygons[j])
-        if y + h < margin_area:
-            margin_blocks.append((j, tb_polygons[j], tb_info[j]))
+        if y >= margin_area_begin and y + h < margin_area:
+            margin_blocks.append((j, tb_polygons[j], block_lines))
         else:
-            main_blocks.append((j, tb_polygons[j], tb_info[j]))
+            main_blocks.append((j, tb_polygons[j], block_lines))
 
     # sort blocks
-    margin_blocks.sort(key=lambda block: make_bbox_from_poly(block[1])[1])  # sort by Y
-    main_blocks.sort(key=lambda block: make_bbox_from_poly(block[1])[1])
-
+    margin_blocks.sort(key=lambda block: (-make_bbox_from_poly(block[1])[0], make_bbox_from_poly(block[1])[1]))
+    main_blocks.sort(key=lambda block: (-make_bbox_from_poly(block[1])[0], make_bbox_from_poly(block[1])[1]))
+   
     for c, j in independ_lines:
         line = res_bbox[c][j]
         conf = float(line[4])
 
         if conf < score_thr:
             continue
-        x, y = int(line[0]), int(line[1])
-        w, h = int(line[2] - line[0]), int(line[3] - line[1])
-        if y + h < margin_area:
+
+        y = line[1] if len(line) >= 2 else 0      
+          
+        if y >= margin_area_begin and y < margin_area:
             margin_lines.append([c, j])
         else:
             main_lines.append([c, j])
     
     # sort margin_lines and main_lines
-    margin_lines.sort(key=lambda pair: res_bbox[pair[0]][pair[1]][1])
-    main_lines.sort(key=lambda pair: res_bbox[pair[0]][pair[1]][1])
+    margin_lines.sort(key=lambda pair: (-res_bbox[pair[0]][pair[1]][0], res_bbox[pair[0]][pair[1]][1]))
+    main_lines.sort(key=lambda pair: (-res_bbox[pair[0]][pair[1]][0], res_bbox[pair[0]][pair[1]][1]))
 
     # Output handling
     #1. Margin Text
