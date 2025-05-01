@@ -13,6 +13,8 @@ from pathlib import Path
 from lxml import etree as ET
 from tqdm import tqdm
 import numpy as np
+from wand.image import Image
+# from wand.display import display
 
 class Category(IntEnum):
     TEXT_BLOCK = 0
@@ -916,6 +918,25 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
     return s
 
 
+# BEGIN EDITS TO IMAGE MAGICK
+def crop_image_into_margin_and_body(input_image_path, output_margin_path, output_body_path):
+    with Image(filename=input_image_path) as img:
+        img_width = img.width
+        img_height = img.height
+
+        margin_area = img_height * .46/1.550
+
+        with img.clone() as margin_img:
+            margin_img.crop(left=0, top=0, width=img_width, height=margin_area)
+            margin_img.save(filename=output_margin_path)
+            print(f"Saved margin image to {output_margin_path}")
+
+        with img.clone() as body_img:
+            body_img.crop(left=0, top=margin_area, width=img_width, height=img_height - margin_area)
+            body_img.save(filename=output_body_path)
+            print(f"Saved body image to {output_body_path}")
+# END EDITS TO IMAGE MAGICK
+
 def run_layout_detection(img_paths: List[str] = None, list_path: str = None, output_path: str = "layout_prediction.xml",
                          config: str = './models/config_file.py',
                          checkpoint: str = 'models/weight_file.pth',
@@ -950,23 +971,24 @@ def run_layout_detection(img_paths: List[str] = None, list_path: str = None, out
             import cv2
             img = cv2.imread(img_path)
 
-            result = detector.predict(img)
+            # Crop the image into margin and body
+            margin_path = img_path.replace(".jpg", "_margin.jpg")
+            body_path = img_path.replace(".jpg", "_body.jpg")
+            crop_image_into_margin_and_body(img_path, margin_path, body_path, margin_height_ratio)
 
-            if use_show:
-                dump_img = detector.show(img, img_path, result, score_thr=score_thr)
-                cv2.namedWindow('show')
-                cv2.imshow('show', dump_img)
-                if 27 == cv2.waitKey(0):
-                    break
+            # Process the margin image
+            margin_img = cv2.imread(margin_path)
+            margin_result = detector.predict(margin_img)
+            margin_h, margin_w = margin_img.shape[:2]
+            margin_xml = convert_to_xml_string3(margin_w, margin_h, margin_path, detector.classes, margin_result, score_thr=score_thr)
+            tee(margin_xml)
 
-            if dump_dir is not None:
-                import cv2
-                dump_img = detector.show(img, img_path, result, score_thr=score_thr)
-                cv2.imwrite(str(Path(dump_dir) / Path(img_path).name), dump_img)
-            img_h, img_w = img.shape[0:2]
-            xml_str = convert_to_xml_string2(
-                img_w, img_h, img_path, detector.classes, result, score_thr=score_thr)
-            tee(xml_str)
+            # Process the body image
+            body_img = cv2.imread(body_path)
+            body_result = detector.predict(body_img)
+            body_h, body_w = body_img.shape[:2]
+            body_xml = convert_to_xml_string3(body_w, body_h, body_path, detector.classes, body_result, score_thr=score_thr)
+            tee(body_xml)
 
         tee('</OCRDATASET>\n')
     # end with
