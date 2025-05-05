@@ -798,6 +798,7 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
     res_textblockes = result[0]
     res_bbox = result[1]
     
+
     # convert text block masks to polygons
     tb_polygons = textblock_to_rect(classes, res_textblockes, min_bbox_size)
     tb_info, independ_lines = get_relationship_rect(res_bbox, tb_polygons, classes)
@@ -806,100 +807,44 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
 
     tb_cls_id = classes.index('text_block')
 
-    # separate margin area = top  of page
-    margin_area_begin = img_h/8.5
-    margin_area = img_h * .46/1.550
-
-    # separate blocks and lines by margin or main text
-    margin_blocks = []
-    main_blocks = []
-    margin_lines = []
-    main_lines = []
-
-    # text block and line elems inside the text block
+    # Text block and line elems inside the text block
     for j in range(len(tb_info)):
         if tb_info[j] is None or res_bbox[tb_cls_id][j][4] < score_thr or tb_polygons[j] is None:  # text block already converted
             continue
         
-        x, y, w, h = make_bbox_from_poly(tb_polygons[j])
-        if y >= margin_area_begin and y + h < margin_area:
-            margin_blocks.append((j, tb_polygons[j], block_lines))
+        if len(tb_info[j]) == 0:  # text block without line elms
+            # create and add a line_main elem at least one
+            #x, y, w, h = make_bbox_from_poly(tb_polygons[j])
+            #if w >= min_bbox_size and h >= min_bbox_size:
+            #    s += f'    <LINE TYPE = "{name_to_org_name(classes[0])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}"></LINE>\n'
+            continue
+            #pass
         else:
-            main_blocks.append((j, tb_polygons[j], block_lines))
+            s = add_text_block_head(s, tb_polygons[j], res_bbox[tb_cls_id][j][4], '  ')
+            for c_id, i in tb_info[j]:
+                line = res_bbox[c_id][i]
+                conf = float(line[4])
+                if conf < score_thr:
+                    continue
+                if c_id == tb_cls_id:  # write as line_main
+                    x, y, w, h = make_bbox_from_poly(tb_polygons[i])
+                    if w >= min_bbox_size and h >= min_bbox_size:
+                        s += f'    <LINE TYPE = "{name_to_org_name(classes[0])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}"></LINE>\n'
+                else:
+                    x, y = int(line[0]), int(line[1])
+                    w, h = int(line[2] - line[0]), int(line[3] - line[1])
+                    s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
+        s += '  </TEXTBLOCK>\n'
 
-    # sort blocks
-    margin_blocks.sort(key=lambda block: (-make_bbox_from_poly(block[1])[0], make_bbox_from_poly(block[1])[1]))
-    main_blocks.sort(key=lambda block: (-make_bbox_from_poly(block[1])[0], make_bbox_from_poly(block[1])[1]))
-   
+    # Line elems outside text_block and block_ad
     for c, j in independ_lines:
         line = res_bbox[c][j]
         conf = float(line[4])
-
         if conf < score_thr:
             continue
-
-        y = line[1] if len(line) >= 2 else 0      
-          
-        if y >= margin_area_begin and y < margin_area:
-            margin_lines.append([c, j])
-        else:
-            main_lines.append([c, j])
-    
-    # sort margin_lines and main_lines
-    margin_lines.sort(key=lambda pair: (-res_bbox[pair[0]][pair[1]][0], res_bbox[pair[0]][pair[1]][1]))
-    main_lines.sort(key=lambda pair: (-res_bbox[pair[0]][pair[1]][0], res_bbox[pair[0]][pair[1]][1]))
-
-    # Output handling
-    #1. Margin Text
-    s += '  <MARGIN_BLOCKS>\n'
-    for j, poly, info in margin_blocks:
-        s = add_text_block_head(s, poly, res_bbox[tb_cls_id][j][4], '  ')
-
-        for c_id, i in info:
-            line = res_bbox[c_id][i]
-            conf = float(line[4])
-            if conf < score_thr:
-                continue
-            if c_id == tb_cls_id:
-                x, y, w, h = make_bbox_from_poly(tb_polygons[i])
-                if w >= min_bbox_size and h >= min_bbox_size:
-                    s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
-            else:
-                x, y = int(line[0]), int(line[1])
-                w, h = int(line[2] - line[0]), int(line[3] - line[1])
-                s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
-        s += '  </TEXTBLOCK>\n'
-    for c, j in margin_lines:
-        line = res_bbox[c][j]
         x, y = int(line[0]), int(line[1])
         w, h = int(line[2] - line[0]), int(line[3] - line[1])
-        s += f'  <LINE TYPE = "{name_to_org_name(classes[c])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{line[4]:0.3f}"></LINE>\n'
-    s += '  </MARGIN_BLOCKS>\n'
-
-    #2. Main Text
-    s += '  <MAIN_BLOCKS>\n'
-    for j, poly, info in main_blocks:
-        s = add_text_block_head(s, poly, res_bbox[tb_cls_id][j][4], '  ')
-        for c_id, i in info:
-            line = res_bbox[c_id][i]
-            conf = float(line[4])
-            if conf < score_thr:
-                continue
-            if c_id == tb_cls_id:
-                x, y, w, h = make_bbox_from_poly(tb_polygons[i])
-                if w >= min_bbox_size and h >= min_bbox_size:
-                    s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
-            else:
-                x, y = int(line[0]), int(line[1])
-                w, h = int(line[2] - line[0]), int(line[3] - line[1])
-                s += f'    <LINE TYPE = "{name_to_org_name(classes[c_id])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
-        s += '  </TEXTBLOCK>\n'
-    for c, j in main_lines:
-        line = res_bbox[c][j]
-        x, y = int(line[0]), int(line[1])
-        w, h = int(line[2] - line[0]), int(line[3] - line[1])
-        s += f'  <LINE TYPE = "{name_to_org_name(classes[c])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{line[4]:0.3f}"></LINE>\n'
-    s += '  </MAIN_BLOCKS>\n'
+        s += f'  <LINE TYPE = "{name_to_org_name(classes[c])}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></LINE>\n'
 
     # Block elms other than block_ad
     for c in range(len(classes)):
@@ -914,12 +859,15 @@ def convert_to_xml_string3(img_w, img_h, img_path, classes, result,
                 s += f'  <BLOCK TYPE = "{name_to_org_name(cls)}" X = "{x}" Y = "{y}" WIDTH = "{w}" HEIGHT = "{h}" CONF = "{conf:0.3f}"></BLOCK>\n'
 
     s += '</PAGE>\n'
-# END EDITS TO SPLIT CONTENT
+
     return s
 
 
 # BEGIN EDITS TO IMAGE MAGICK
 def crop_image_into_margin_and_body(input_image_path, output_margin_path, output_body_path):
+    os.makedirs(os.path.dirname(output_margin_path), exist_ok=True)
+    os.makedirs(os.path.dirname(output_body_path), exist_ok=True)
+
     with Image(filename=input_image_path) as img:
         img_width = img.width
         img_height = img.height
@@ -935,6 +883,7 @@ def crop_image_into_margin_and_body(input_image_path, output_margin_path, output
             body_img.crop(left=0, top=margin_area, width=img_width, height=img_height - margin_area)
             body_img.save(filename=output_body_path)
             print(f"Saved body image to {output_body_path}")
+    return output_margin_path, output_body_path
 # END EDITS TO IMAGE MAGICK
 
 def run_layout_detection(img_paths: List[str] = None, list_path: str = None, output_path: str = "layout_prediction.xml",
@@ -971,10 +920,10 @@ def run_layout_detection(img_paths: List[str] = None, list_path: str = None, out
             import cv2
             img = cv2.imread(img_path)
 
-            # Crop the image into margin and body
+            # Crop the image
             margin_path = img_path.replace(".jpg", "_margin.jpg")
             body_path = img_path.replace(".jpg", "_body.jpg")
-            crop_image_into_margin_and_body(img_path, margin_path, body_path, margin_height_ratio)
+            crop_image_into_margin_and_body(img_path, margin_path, body_path)
 
             # Process the margin image
             margin_img = cv2.imread(margin_path)
